@@ -11,7 +11,7 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token'; 
-import { Connection, Transaction } from "@solana/web3.js";
+import { AccountMeta, Connection, Transaction, TransactionInstruction } from "@solana/web3.js";
 
 describe("raw-transfer", () => {
   // Configure the client to use the local cluster.
@@ -21,6 +21,7 @@ describe("raw-transfer", () => {
   let payer: anchor.web3.Keypair;
   let recipient: anchor.web3.Keypair;
   const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
+
   before(async () => {
     payer = await SolanaConfigService.getDefaultAccount();
     console.log('payer', payer);
@@ -30,13 +31,13 @@ describe("raw-transfer", () => {
   })
 
   it("Send solana token", async () => {
-    const tx = await program.methods.sendSolToken(new anchor.BN(100000000)).accounts({
+    const tx = await program.methods.sendSolToken(new anchor.BN(10000000000)).accounts({
       payer: payer.publicKey,
       sender: payer.publicKey,
       recipient: recipient.publicKey
     }).signers([payer]).rpc();
 
-    console.log("Transaction", tx);
+    console.log("Transaction Send solana token", tx);
   });
 
   it("Send spl token", async () => {
@@ -77,6 +78,8 @@ describe("raw-transfer", () => {
     100000000000 // because decimals for the mint are set to 9 
   )
 
+  console.log('Sender ATA before send:', (await getAccount(connection, senderATA.address)).amount);
+
   const recipientATA = await getOrCreateAssociatedTokenAccount(
     connection,
     payer,
@@ -85,27 +88,33 @@ describe("raw-transfer", () => {
   )
   console.log('Recipient ATA', recipientATA);
 
-  // const tx = await program.methods.sendSplToken(new anchor.BN(100000000)).accounts({
-  //   payer: payer.publicKey,
-  //   sender: payer.publicKey,
-  //   tokenProgram: TOKEN_PROGRAM_ID,
-  //   senderToken: senderATA.owner,
-  //   recipientToken: recipientATA.owner
-  // }).signers([payer]).rpc();
+  const tx = await program.methods.sendSplToken(new anchor.BN(100000000)).accounts({
+    payer: payer.publicKey,
+    sender: payer.publicKey,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    senderToken: senderATA.address,
+    recipientToken: recipientATA.address
+  }).signers([payer]).rpc();
 
-  //   console.log("Transaction", tx);
+  console.log("Transaction", tx);
+
+  console.log('Sender ATA after send:', (await getAccount(connection, senderATA.address)).amount);
+  console.log('Recipient ATA after send:', (await getAccount(connection, recipientATA.address)).amount);
 
   // Create transaction
-    const transaction = new Transaction();
-    const instruction = createTransferInstruction(
-      senderATA.address,
-      recipientATA.address,
-      payer.publicKey,
-      1000000,
-      [],
-      TOKEN_PROGRAM_ID
-    )
-    transaction.add(instruction);
-    console.log('Transaction', transaction);
+  // const transaction = new Transaction();
+  // const accountsInstruction : AccountMeta[] = [
+  //   <AccountMeta>{ pubkey: senderATA.address, isSigner: false, isWritable: true },
+  //   <AccountMeta>{ pubkey: recipientATA.address, isSigner: false, isWritable: true },
+  //   <AccountMeta>{ pubkey: payer.publicKey, isSigner: true, isWritable: false },
+  // ];
+
+  // const instruction = new TransactionInstruction({
+  //   keys: accountsInstruction,
+  //   programId: TOKEN_PROGRAM_ID,
+  //   data: 
+  // })
+  
+
   })
 });

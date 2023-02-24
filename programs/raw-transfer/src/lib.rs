@@ -50,6 +50,8 @@ pub mod raw_transfer {
             amount,
         };
 
+        msg!("Data {:?}", data.amount);
+
         let data = data.try_to_vec().unwrap();
 
         msg!("Data {:?}", data);
