@@ -65,9 +65,45 @@ pub mod raw_transfer {
             ],
             data,
         };
-        
+
         msg!("DEBUG: TransferToken Instruction {:?}", instruction);
         invoke(&instruction, &[payer.clone(), sender.clone(), sender_token.clone(), recipient_token.clone()])
+            .expect("CPI failed");
+
+        Ok(())
+    }
+
+    pub fn mint_spl_token_to(ctx: Context<MintTo>, amount: u64) -> Result<()>{
+        msg!("Instruction: Transfer {:?} of {:?}", amount, ctx.accounts.token_program);
+        let payer = &ctx.accounts.payer;
+        let sender = &ctx.accounts.sender;
+        let mint = &ctx.accounts.mint;
+        let recipient_token = &ctx.accounts.recipient_token;
+        let token_program = &ctx.accounts.token_program;
+
+        let data = TransferTokenParams {
+            instruction: 7,
+            amount,
+        };
+
+        msg!("Data {:?}", data.amount);
+
+        let data = data.try_to_vec().unwrap();
+
+        msg!("Data {:?}", data);
+
+        let instruction = Instruction{
+            program_id: *token_program.key,
+            accounts: vec![
+                AccountMeta::new(*mint.key, false),
+                AccountMeta::new(*recipient_token.key, false),
+                AccountMeta::new(*sender.key, true)
+            ],
+            data,
+        };
+
+        msg!("DEBUG: MintTo Instruction {:?}", instruction);
+        invoke(&instruction, &[payer.clone(), sender.clone(), mint.clone(), recipient_token.clone()])
             .expect("CPI failed");
 
         Ok(())
@@ -114,3 +150,24 @@ pub struct TransferToken<'info> {
     pub token_program: AccountInfo<'info>
 }
 
+#[derive(Accounts)]
+pub struct MintTo<'info> {
+    #[account(signer)]
+    /// CHECK: Transaction fee payer
+    pub payer: AccountInfo<'info>,
+
+    #[account(signer)]
+    /// CHECK: Source account to send lamports
+    pub sender: AccountInfo<'info>,
+
+    #[account(mut)]
+    /// CHECK: sender token account
+    pub mint: AccountInfo<'info>,
+
+    #[account(mut)]
+    /// CHECK: recipient token account
+    pub recipient_token: AccountInfo<'info>,
+
+    /// CHECK: Account program of token
+    pub token_program: AccountInfo<'info>
+}
