@@ -11,7 +11,7 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token'; 
-import { AccountMeta, Connection, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { AccountMeta, Connection, LAMPORTS_PER_SOL, Transaction, TransactionInstruction } from "@solana/web3.js";
 
 describe("raw-transfer", () => {
   // Configure the client to use the local cluster.
@@ -61,13 +61,13 @@ describe("raw-transfer", () => {
     mint,
     payer.publicKey
   );
-    console.log('Sender ATA', senderATA);
+  console.log('Sender ATA', senderATA.address.toBase58());
 
-  const tokenAccountInfo = await getAccount(
+  const senderAccountBeforeMint = await getAccount(
       connection,
       senderATA.address
   )
-  console.log('token account info',tokenAccountInfo.amount);
+  console.log('Sender account before mint',senderAccountBeforeMint.amount);
 
   await mintTo(
     connection,
@@ -75,10 +75,14 @@ describe("raw-transfer", () => {
     mint,
     senderATA.address,
     payer.publicKey,
-    100000000000 // because decimals for the mint are set to 9 
+    1000 * LAMPORTS_PER_SOL // because decimals for the mint are set to 9 
   )
 
-  console.log('Sender ATA before send:', (await getAccount(connection, senderATA.address)).amount);
+  const senderAccountAfterMint = await getAccount(
+    connection,
+    senderATA.address
+  )
+  console.log('Sender ATA after mint:', senderAccountAfterMint.amount);
 
   const recipientATA = await getOrCreateAssociatedTokenAccount(
     connection,
@@ -86,9 +90,9 @@ describe("raw-transfer", () => {
     mint,
     recipient.publicKey
   )
-  console.log('Recipient ATA', recipientATA);
+  console.log('Recipient ATA before send', (await getAccount(connection, recipientATA.address)).amount);
 
-  const tx = await program.methods.sendSplToken(new anchor.BN(100000000)).accounts({
+  const tx = await program.methods.sendSplToken(new anchor.BN(100 * LAMPORTS_PER_SOL)).accounts({
     payer: payer.publicKey,
     sender: payer.publicKey,
     tokenProgram: TOKEN_PROGRAM_ID,
@@ -98,7 +102,9 @@ describe("raw-transfer", () => {
 
   console.log("Transaction", tx);
 
-  console.log('Sender ATA after send:', (await getAccount(connection, senderATA.address)).amount);
+  await new Promise(f => setTimeout(f, 100));
+
+  console.log('Sender ATA after send:',  (await getAccount(connection, senderATA.address)).amount);
   console.log('Recipient ATA after send:', (await getAccount(connection, recipientATA.address)).amount);
 
   // Create transaction
@@ -114,7 +120,6 @@ describe("raw-transfer", () => {
   //   programId: TOKEN_PROGRAM_ID,
   //   data: 
   // })
-  
 
   })
 });
